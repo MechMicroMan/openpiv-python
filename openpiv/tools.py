@@ -22,12 +22,15 @@ import sys
 import pathlib
 import multiprocessing
 from typing import Any, Union, List, Optional
+from functools import partial
 # import re
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as pt
 from natsort import natsorted
+
+from datetime import datetime
 
 # from builtins import range
 from imageio.v3 import imread as _imread, imwrite as _imsave
@@ -559,6 +562,9 @@ class Multiprocesser:
         elif pattern_b == '(1+2),(3+4)':
             self.files_b = self.files_a[1::2]
             self.files_a = self.files_a[0::2]
+        elif pattern_b == '(1+2),(1+3)':
+            self.files_b = self.files_a[1:]
+            self.files_a = self.files_a[:1]*(len(self.files_a)-1)
         else:
             self.files_b = sorted(data_dir.glob(pattern_b))
 
@@ -579,7 +585,7 @@ class Multiprocesser:
                 "Something failed loading the image file. No images were found. Please check directory and image template name."
             )
 
-    def run(self, func, n_cpus=1):
+    def run(self, func, n_cpus=1, **kwargs):
         """Start to process images.
         
         Parameters
@@ -606,10 +612,10 @@ class Multiprocesser:
         # since it is difficult to debug multiprocessing stuff.
         if n_cpus > 1:
             pool = multiprocessing.Pool(processes=n_cpus)
-            res = pool.map(func, image_pairs)
+            res = pool.map(partial(func, **kwargs), image_pairs)
         else:
             for image_pair in image_pairs:
-                func(image_pair)
+                func(image_pair, **kwargs)
 
 
 def negative(image):
