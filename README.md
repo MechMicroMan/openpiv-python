@@ -16,6 +16,8 @@ OR
 
 `pip install git+https://github.com/MechMicroMan/openpiv-python.git`
 
+Note: you will need a Nvidia GPU which supports CUDA 12x
+
 
 ## License and copyright
 
