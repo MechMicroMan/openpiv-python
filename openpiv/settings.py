@@ -154,7 +154,7 @@ class PIVSettings:
 
     invert: bool = False  # for the test_invert
 
-    fmt: str = "%.4e"
+    fmt: str = "%.6e"
     
     "CPU/GPU settings"
 

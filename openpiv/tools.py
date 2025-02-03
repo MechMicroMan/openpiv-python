@@ -393,6 +393,7 @@ def save(
     v: np.ndarray, 
     flags: Optional[np.ndarray] = None,
     mask: Optional[np.ndarray] = None,
+    settings = None,
     fmt: str="%.4e",
     delimiter: str="\t",
     )-> None:
@@ -427,6 +428,7 @@ def save(
     mask: 2d np.ndarray boolean, marks the image masked regions (dynamic and/or static)
         default: None - will be all False
 
+    settings: openpiv.settings.PIVSettings
 
     fmt : string
         a format string. See documentation of numpy.savetxt
@@ -452,28 +454,27 @@ def save(
     if flags is None:
         flags = np.zeros_like(u, dtype=int)
 
-    # build output array
-    out = np.vstack([m.flatten() for m in [x, y, u, v, flags, mask]])
-
-    # save data to file.
-    np.savetxt(
-        filename,
-        out.T,
-        fmt=fmt,
-        delimiter=delimiter,
-        header="x"
-        + delimiter
-        + "y"
-        + delimiter
-        + "u"
-        + delimiter
-        + "v"
-        + delimiter
-        + "flags"
-        + delimiter
-        + "mask",
-    )
-
+    extension = str(filename).split('.')[-1].lower()
+    # save data to an ascii txt file
+    if extension == 'txt':
+        out = np.vstack([m.flatten() for m in [x, y, u, v, flags, mask]])
+        np.savetxt(
+            filename, out.T, fmt=settings.fmt, delimiter=delimiter, 
+            header="x" + delimiter + "y" + delimiter + "u"+ delimiter + "v" + delimiter + "flags" + delimiter + "mask",
+        )
+    # save data to a numpy npz file
+    elif extension == 'npz':
+        binning = settings.overlap[-1]
+        shape = u.shape
+        
+        np.savez(
+            filename, 
+            x = x, y = y, u = u, v = v,
+            format = 'OpenPIV', version = 'n/a',
+            binning = binning, shape = shape, 
+            flags = flags, mask = mask)
+    else:
+        raise ValueError('File extension not supported. Use txt or npz')
 
 def display(message):
     """Display a message to standard output.
