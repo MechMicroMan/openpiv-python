@@ -1129,7 +1129,7 @@ def extended_search_area_piv(
             now = datetime.now()
             print(f'\t{now.strftime("%H:%M:%S")}: Block {i+1} / {num_blocks} : {total_bad} bad peaks so far', end='\r')
 
-        perc = 100*(total_bad/(2*n_rows*n_cols))
+        perc = 100*(total_bad/(2*num_areas))
         print(f'\t{now.strftime("%H:%M:%S")}: All {num_blocks} blocks complete : {total_bad} ({perc:.2f}%) bad peaks')
         u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
 
@@ -1145,7 +1145,8 @@ def extended_search_area_piv(
         if use_vectorized is True:
             u, v, invalid = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
                                             subpixel_method=subpixel_method)
-            print('\t{0} bad peaks'.format(invalid))
+            perc = 100*(invalid/(2*num_areas))
+            print('\t{0} ({1:.2f}%) bad peaks'.format(invalid, perc))
         else:
             raise NotImplementedError('correlation_to_displacement')
             u, v = correlation_to_displacement(corr, n_rows, n_cols,
