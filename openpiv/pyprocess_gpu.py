@@ -1129,7 +1129,7 @@ def extended_search_area_piv(
             now = datetime.now()
             print(f'\t{now.strftime("%H:%M:%S")}: Block {i+1} / {num_blocks} : {total_bad} bad peaks so far', end='\r')
 
-        perc = 100*(total_bad/(n_rows*n_cols))
+        perc = 100*(total_bad/(2*n_rows*n_cols))
         print(f'\t{now.strftime("%H:%M:%S")}: All {num_blocks} blocks complete : {total_bad} ({perc:.2f}%) bad peaks')
         u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
 
