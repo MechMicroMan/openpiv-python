@@ -138,7 +138,7 @@ def multipass(args, settings):
     frame_b = cp.array(frame_b)
 
     now = datetime.now()
-    print(f' {now.strftime("%H:%M:%S")}: starting pass 1')
+    print(f' {now.strftime("%H:%M:%S")}: starting pass 1 / {settings.num_iterations}')
 
     # "first pass"
     x, y, u, v, s2n = first_pass(
@@ -183,7 +183,7 @@ def multipass(args, settings):
 
         time_diff = datetime.now() - now
         now = datetime.now()
-        print(f' {now.strftime("%H:%M:%S")}: starting pass {i+1}')
+        print(f' {now.strftime("%H:%M:%S")}: starting pass {i+1} / {settings.num_iterations}')
 
         x, y, u, v, grid_mask, flags = multipass_img_deform(
             frame_a,
@@ -200,7 +200,7 @@ def multipass(args, settings):
 
     time_diff = datetime.now() - now
     now = datetime.now()
-    print(f' {now.strftime("%H:%M:%S")}: completed pass {i+1}')
+    print(f' {now.strftime("%H:%M:%S")}: completed pass {i+1} / {settings.num_iterations}')
 
 
     # we now use only 0s instead of the image
@@ -287,7 +287,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
 
     #print(mempool.used_bytes()/1024/1024)   #5914
 
-    print(f' {datetime.now().strftime("%H:%M:%S")}')
+    #print(f' {datetime.now().strftime("%H:%M:%S")}')
     ut = scn.map_coordinates(
         cp.array(u), 
         cp.asarray(cp.meshgrid(
@@ -299,7 +299,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
     )
 
     #print(mempool.used_bytes()/1024/1024)   #9857
-    print(f' {datetime.now().strftime("%H:%M:%S")}')
+    #print(f' {datetime.now().strftime("%H:%M:%S")}')
     vt = scn.map_coordinates(
         cp.array(v), 
         cp.asarray(cp.meshgrid(
@@ -313,7 +313,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
     del x1, y1, side_x, side_y
     mempool.free_all_blocks()
 
-    print(f' {datetime.now().strftime("%H:%M:%S")}')
+    #print(f' {datetime.now().strftime("%H:%M:%S")}')
     #print(mempool.used_bytes()/1024/1024)  #13700
 
     frame = frame.astype(np.float32)
