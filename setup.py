@@ -26,7 +26,8 @@ setup(
         'scipy',
         'natsort',
         'tqdm',
-        'importlib_resources'
+        'importlib_resources',
+        'cupy-cuda12x',
     ],
     extras_require={"tests": ["pytest"]},
     classifiers=[
