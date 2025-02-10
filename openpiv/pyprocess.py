@@ -6,9 +6,15 @@ import numpy.lib.stride_tricks
 import numpy as np
 from numpy import log
 from numpy import ma
-from numpy.fft import rfft2 as rfft2_, irfft2 as irfft2_, fftshift as fftshift_
-from scipy.signal import convolve2d as conv_
 
+#from numpy.fft import fftshift as fftshift_, rfft2 as rfft2_, irfft2 as irfft2_,
+from pyfftw.interfaces.numpy_fft import rfft2 as rfft2_, irfft2 as irfft2_, fftshift as fftshift_
+from pyfftw.builders import rfft2 as b_rfft2, irfft2 as b_irfft2
+from  pyfftw import empty_aligned
+
+from pyfftw import byte_align
+
+from scipy.signal import convolve2d as conv_
 
 __licence_ = """
 Copyright (C) 2011  www.openpiv.net
@@ -26,7 +32,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
 
 def get_field_shape(
     image_size: Tuple[int,int],
@@ -178,7 +183,6 @@ def get_rect_coordinates(
     X,Y = np.meshgrid(x[0,:], y[:,0])
     
     return (X, Y)
-
 
 def sliding_window_array(
     image: np.ndarray, 
@@ -669,16 +673,18 @@ def vectorized_sig2noise_ratio(correlation,
     else:
         raise ValueError(f"sig2noise_method not supported: {sig2noise_method}")
         
-        
+
 def fft_correlate_images(
-    image_a: np.ndarray,
-    image_b: np.ndarray,
+   image_a, image_b,
     correlation_method: str="circular",
     normalized_correlation: bool=True,
     conj: Callable=np.conj,
     rfft2 = rfft2_,
     irfft2 = irfft2_,
     fftshift = fftshift_,
+    f2a_builder=None,
+    f2b_builder=None,
+    corr_builder=None
     )->np.ndarray:
     """ FFT based cross correlation
     of two images with multiple views of np.stride_tricks()
@@ -733,13 +739,40 @@ def fft_correlate_images(
         fslice = (slice(0, image_a.shape[0]),
                   slice((fsize[0]-s1[0])//2, (fsize[0]+s1[0])//2),
                   slice((fsize[1]-s1[1])//2, (fsize[1]+s1[1])//2))
-        f2a = conj(rfft2(image_a, fsize, axes=(-2, -1)))  # type: ignore
-        f2b = rfft2(image_b, fsize, axes=(-2, -1))  # type: ignore
-        corr = fftshift(irfft2(f2a * f2b).real, axes=(-2, -1))[fslice]
+        
+        f2a = conj(rfft2(image_a, fsize, axes=(-2, -1), threads=20))  # type: ignore
+        f2b = rfft2(image_b, fsize, axes=(-2, -1), threads=20)  # type: ignore
+        corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))[fslice]
+
     elif correlation_method == "circular":
-        f2a = conj(rfft2(image_a))
-        f2b = rfft2(image_b)
-        corr = fftshift(irfft2(f2a * f2b).real, axes=(-2, -1))
+        #f2a = conj(rfft2(image_a, threads=20))
+        #f2b = rfft2(image_b, threads=20)
+        #corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
+
+
+        if (f2a_builder != None):
+            if  (f2a_builder.input_shape == image_a.shape):
+                # Perform FFT computations
+                f2a = np.conj(f2a_builder(image_a))  # Conjugate of the FFT of image_a
+                f2b = f2b_builder(image_b)           # FFT of image_b
+
+                # Compute the cross-correlation
+                corr = fftshift(corr_builder(byte_align(f2a * f2b)).real, axes=(-2, -1))
+
+            else:
+
+                f2a = conj(rfft2(image_a, threads=20))
+                f2b = rfft2(image_b, threads=20)
+                corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
+
+        else:
+
+                f2a = conj(rfft2(image_a, threads=20))
+                f2b = rfft2(image_b, threads=20)
+                corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
+
+                
+
     else:
         print(f"correlation method {correlation_method } is not implemented")
 
@@ -892,11 +925,19 @@ def fft_correlate_windows(window_a, window_b,
     size = s1 + s2 - 1
     fsize = 2 ** np.ceil(np.log2(size)).astype(int)
     fslice = tuple([slice(0, int(sz)) for sz in size])
+
     f2a = rfft2(window_a, fsize)
     f2b = rfft2(window_b[::-1, ::-1], fsize)
     corr = irfft2(f2a * f2b).real[fslice]
-    return corr
 
+    #fft_a = b_rfft2(window_a, s=fsize, threads=20)
+    #fft_b = b_rfft2(window_b, s=fsize, threads=20)
+    #ifft_corr = b_irfft2(f2a * f2b, s=fsize, threads=20)
+    #f2a = fft_a()
+    #f2b = fft_b()
+    #corr = ifft_corr().real[fslice]
+
+    return corr
 
 def extended_search_area_piv(
     frame_a: np.ndarray,
@@ -1068,15 +1109,29 @@ def extended_search_area_piv(
         num_areas = aa.shape[0]
         areas_per_block = int(max_array_size // area_size)
         num_blocks = int(np.ceil(num_areas / areas_per_block))
+
+        # Precompute FFTs based on chunk size
+        aa_aligned = empty_aligned((areas_per_block, search_area_size[0], search_area_size[1]), dtype=aa.dtype)
+        bb_aligned = empty_aligned((areas_per_block, search_area_size[0], search_area_size[1]), dtype=aa.dtype)
+        corr_aligned = empty_aligned((areas_per_block, search_area_size[0], int((search_area_size[1]/2)+1)), dtype=aa.dtype)
+        f2a_builder = b_rfft2(aa_aligned, axes=(-2, -1), threads=20)
+        f2b_builder = b_rfft2(bb_aligned, axes=(-2, -1), threads=20)
+        corr_builder = b_irfft2(corr_aligned, axes=(-2, -1), threads=20)
+
+
         for i in range(num_blocks):
             #print(f'block {i+1}')
             block_start, block_end = i*areas_per_block, (i+1)*areas_per_block
 
             corr = fft_correlate_images(
-                aa[block_start:block_end], bb[block_start:block_end],
+                image_a=byte_align(aa[block_start:block_end]), image_b=byte_align(bb[block_start:block_end]),
                 correlation_method=correlation_method,
-                normalized_correlation=normalized_correlation
+                normalized_correlation=normalized_correlation,
+                f2a_builder =f2a_builder,
+                f2b_builder =  f2b_builder,
+                corr_builder = corr_builder
             )
+
             u[block_start:block_end], v[block_start:block_end], invalid = vectorized_correlation_to_displacements(
                 corr, subpixel_method=subpixel_method
             )
@@ -1090,7 +1145,10 @@ def extended_search_area_piv(
     else:
         corr = fft_correlate_images(aa, bb,
                                     correlation_method=correlation_method,
-                                    normalized_correlation=normalized_correlation)
+                                    normalized_correlation=normalized_correlation,
+                                    f2a_builder = None,
+                                    f2b_builder =  None,
+                                    corr_builder = None)
         
         if use_vectorized:
             u, v, invalid = vectorized_correlation_to_displacements(

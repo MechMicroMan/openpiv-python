@@ -65,6 +65,9 @@ def prepare_images(
 
         frame_b = np.pad(frame_b, pad_width=((a, aa), (b, bb)), mode='constant')
 
+    print(frame_a.shape)
+    print(frame_b.shape)
+
     if (frame_b.shape[0] != frame_a.shape[0]) or (frame_b.shape[1] != frame_a.shape[1]):
         raise ValueError('Images are different sizes.')
 
@@ -131,7 +134,6 @@ def prepare_images(
 
     return (frame_a, frame_b, image_mask)
 
-
 def piv(settings):
     """ the func fuction is the "frame" in which the PIV evaluation is done """
 
@@ -156,7 +158,6 @@ def piv(settings):
         pattern_b=settings.frame_pattern_b,
     )
     task.run(func=multipass, n_cpus=settings.num_cpus, settings=settings)
-
 
 def multipass(args, settings):
     """A function to process each image pair."""
@@ -457,7 +458,6 @@ def create_deformation_field(frame, x, y, u, v, interpolation_order = 3):
 
     return x, y, ut, vt
 
-
 def deform_windows(frame, x, y, u, v, interpolation_order=1, interpolation_order2=3,
                    debugging=False):
     """
@@ -611,7 +611,6 @@ def first_pass(frame_a, frame_b, settings):
                            settings.overlap[0])
 
     return x, y, u, v, s2n
-
 
 def multipass_img_deform(
     frame_a: np.ndarray,

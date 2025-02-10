@@ -98,7 +98,6 @@ def gaussian(
     vf = convolve(v, g, mode="same")
     return uf, vf
 
-
 def replace_outliers(
     u: np.ndarray,
     v: np.ndarray,

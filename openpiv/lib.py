@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def replace_nans(array, max_iter, tol, kernel_size=2, method="disk"):
 
     """Replace NaN elements in an array using an iterative image inpainting

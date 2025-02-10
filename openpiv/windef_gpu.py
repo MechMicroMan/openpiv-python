@@ -45,7 +45,26 @@ def prepare_images(
     frame_a = tools.imread(file_a)
     frame_b = tools.imread(file_b)
     # print(frame_a.shape)
+    
+        # Crop width if necesssary
+    if frame_b.shape[1] > frame_a.shape[1]:
+        offset = (frame_b.shape[1] -frame_a.shape[1]) // 2
+        frame_b = frame_b[:, offset : offset + frame_a.shape[1]]
 
+    # Crop height if necessary
+    if frame_b.shape[0] > frame_a.shape[0]:
+        offset = (frame_b.shape[0] - frame_a.shape[0]) // 2
+        frame_b = frame_b[offset : offset + frame_a.shape[0], :]
+
+    # Pad if necessary
+    if (frame_b.shape[0] < frame_a.shape[0]) or (frame_b.shape[1] < frame_a.shape[1]):
+        a = -(frame_b.shape[0] - frame_a.shape[0]) // 2
+        aa = - a + frame_a.shape[0] - frame_b.shape[0]
+
+        b = -(frame_b.shape[1] - frame_a.shape[1]) // 2
+        bb = - b + frame_a.shape[1] - frame_b.shape[1]
+
+        frame_b = np.pad(frame_b, pad_width=((a, aa), (b, bb)), mode='constant')
 
     # Crop width if necesssary
     if frame_b.shape[1] > frame_a.shape[1]:
@@ -226,7 +245,7 @@ def multipass(args, settings):
     # and so u,v
     x, y, u, v = transform_coordinates(x, y, u, v)
 
-    # Saving
+    # Saving=
     txt_file = settings.save_path   
     print(f'Saving to {txt_file}')
     tools.save(txt_file, x, y, u, v, flags, grid_mask, settings)
