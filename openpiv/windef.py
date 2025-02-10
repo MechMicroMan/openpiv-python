@@ -380,11 +380,9 @@ def multipass(args, settings):
     x, y, u, v = transform_coordinates(x, y, u, v)
 
     # Saving
-    txt_file = settings.save_path
+    txt_file = settings.save_path   
     print(f'Saving to {txt_file}')
-    #fig_name = settings.save_path / f'field_A{counter+1:04d}.png'
-
-    tools.save(txt_file, x, y, u, v, flags, grid_mask, fmt=settings.fmt)
+    tools.save(txt_file, x, y, u, v, flags, grid_mask, settings)
 
     if settings.show_plot or settings.save_plot:
         fig, _ = display_vector_field(
