@@ -684,7 +684,8 @@ def fft_correlate_images(
     fftshift = fftshift_,
     f2a_builder=None,
     f2b_builder=None,
-    corr_builder=None
+    corr_builder=None,
+    settings=None
     )->np.ndarray:
     """ FFT based cross correlation
     of two images with multiple views of np.stride_tricks()
@@ -740,14 +741,14 @@ def fft_correlate_images(
                   slice((fsize[0]-s1[0])//2, (fsize[0]+s1[0])//2),
                   slice((fsize[1]-s1[1])//2, (fsize[1]+s1[1])//2))
         
-        f2a = conj(rfft2(image_a, fsize, axes=(-2, -1), threads=20))  # type: ignore
-        f2b = rfft2(image_b, fsize, axes=(-2, -1), threads=20)  # type: ignore
-        corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))[fslice]
+        f2a = conj(rfft2(image_a, fsize, axes=(-2, -1), threads = settings.num_cpus))  # type: ignore
+        f2b = rfft2(image_b, fsize, axes=(-2, -1), threads = settings.num_cpus)  # type: ignore
+        corr = fftshift(irfft2(f2a * f2b, threads = settings.num_cpus).real, axes=(-2, -1))[fslice]
 
     elif correlation_method == "circular":
-        #f2a = conj(rfft2(image_a, threads=20))
-        #f2b = rfft2(image_b, threads=20)
-        #corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
+        #f2a = conj(rfft2(image_a, threads = settings.num_cpus))
+        #f2b = rfft2(image_b, threads = settings.num_cpus)
+        #corr = fftshift(irfft2(f2a * f2b, threads = settings.num_cpus).real, axes=(-2, -1))
 
 
         if (f2a_builder != None):
@@ -761,15 +762,15 @@ def fft_correlate_images(
 
             else:
 
-                f2a = conj(rfft2(image_a, threads=20))
-                f2b = rfft2(image_b, threads=20)
-                corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
+                f2a = conj(rfft2(image_a, threads = settings.num_cpus))
+                f2b = rfft2(image_b, threads = settings.num_cpus)
+                corr = fftshift(irfft2(f2a * f2b, threads = settings.num_cpus).real, axes=(-2, -1))
 
         else:
 
-                f2a = conj(rfft2(image_a, threads=20))
-                f2b = rfft2(image_b, threads=20)
-                corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
+                f2a = conj(rfft2(image_a, threads = settings.num_cpus))
+                f2b = rfft2(image_b, threads = settings.num_cpus)
+                corr = fftshift(irfft2(f2a * f2b, threads = settings.num_cpus).real, axes=(-2, -1))
 
                 
 
@@ -879,7 +880,8 @@ def correlate_windows(window_a, window_b, correlation_method="fft",
 
 def fft_correlate_windows(window_a, window_b,
                           rfft2 = rfft2_,
-                          irfft2 = irfft2_):
+                          irfft2 = irfft2_,
+                          settings=None):
     """ FFT based cross correlation
     it is a so-called linear convolution based,
     since we increase the size of the FFT to
@@ -930,9 +932,9 @@ def fft_correlate_windows(window_a, window_b,
     f2b = rfft2(window_b[::-1, ::-1], fsize)
     corr = irfft2(f2a * f2b).real[fslice]
 
-    #fft_a = b_rfft2(window_a, s=fsize, threads=20)
-    #fft_b = b_rfft2(window_b, s=fsize, threads=20)
-    #ifft_corr = b_irfft2(f2a * f2b, s=fsize, threads=20)
+    #fft_a = b_rfft2(window_a, s=fsize, threads = settings.num_cpus)
+    #fft_b = b_rfft2(window_b, s=fsize, threads = settings.num_cpus)
+    #ifft_corr = b_irfft2(f2a * f2b, s=fsize, threads = settings.num_cpus)
     #f2a = fft_a()
     #f2b = fft_b()
     #corr = ifft_corr().real[fslice]
@@ -953,6 +955,7 @@ def extended_search_area_piv(
     normalized_correlation: bool=False,
     use_vectorized: bool=False,
     max_array_size: int = None,
+    settings = None
 ):
     """Standard PIV cross-correlation algorithm, with an option for
     extended area search that increased dynamic range. The search region
@@ -1114,9 +1117,9 @@ def extended_search_area_piv(
         aa_aligned = empty_aligned((areas_per_block, search_area_size[0], search_area_size[1]), dtype=aa.dtype)
         bb_aligned = empty_aligned((areas_per_block, search_area_size[0], search_area_size[1]), dtype=aa.dtype)
         corr_aligned = empty_aligned((areas_per_block, search_area_size[0], int((search_area_size[1]/2)+1)), dtype=aa.dtype)
-        f2a_builder = b_rfft2(aa_aligned, axes=(-2, -1), threads=20)
-        f2b_builder = b_rfft2(bb_aligned, axes=(-2, -1), threads=20)
-        corr_builder = b_irfft2(corr_aligned, axes=(-2, -1), threads=20)
+        f2a_builder = b_rfft2(aa_aligned, axes=(-2, -1), threads = settings.num_cpus)
+        f2b_builder = b_rfft2(bb_aligned, axes=(-2, -1), threads = settings.num_cpus)
+        corr_builder = b_irfft2(corr_aligned, axes=(-2, -1), threads = settings.num_cpus)
 
 
         for i in range(num_blocks):
@@ -1129,7 +1132,8 @@ def extended_search_area_piv(
                 normalized_correlation=normalized_correlation,
                 f2a_builder =f2a_builder,
                 f2b_builder =  f2b_builder,
-                corr_builder = corr_builder
+                corr_builder = corr_builder,
+                settings=settings
             )
 
             u[block_start:block_end], v[block_start:block_end], invalid = vectorized_correlation_to_displacements(
@@ -1148,7 +1152,8 @@ def extended_search_area_piv(
                                     normalized_correlation=normalized_correlation,
                                     f2a_builder = None,
                                     f2b_builder =  None,
-                                    corr_builder = None)
+                                    corr_builder = None,
+                                    settings=settings)
         
         if use_vectorized:
             u, v, invalid = vectorized_correlation_to_displacements(

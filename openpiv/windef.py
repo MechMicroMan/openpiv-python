@@ -597,6 +597,7 @@ def first_pass(frame_a, frame_b, settings):
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
         max_array_size=settings.max_array_size,
+        settings=settings
     )
 
     shapes = np.array(get_field_shape(frame_a.shape,
@@ -809,6 +810,7 @@ def multipass_img_deform(
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
         max_array_size=settings.max_array_size,
+        settings=settings
     )
 
     # get_field_shape expects tuples for rectangular windows
