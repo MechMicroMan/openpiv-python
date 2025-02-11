@@ -149,10 +149,10 @@ def multipass(args, settings):
     mempool.free_all_blocks()
 
     if settings.smoothn:
-        u, dummy_u1, dummy_u2, dummy_u3 = smoothn.smoothn(
+        u, _, _, _ = smoothn.smoothn(
             u, s=settings.smoothn_p
         )
-        v, dummy_v1, dummy_v2, dummy_v3 = smoothn.smoothn(
+        v, _, _, _ = smoothn.smoothn(
             v, s=settings.smoothn_p
             )
 
@@ -205,11 +205,11 @@ def multipass(args, settings):
         )
         mempool.free_all_blocks()
 
-        if settings.smoothn and i +1 != settings.num_iterations:
-            u, dummy_u1, dummy_u2, dummy_u3 = smoothn.smoothn(
+        if settings.smoothn and i+1 != settings.num_iterations:
+            u, _, _, _ = smoothn.smoothn(
                 u, s=settings.smoothn_p
             )
-            v, dummy_v1, dummy_v2, dummy_v3 = smoothn.smoothn(
+            v, _, _, _ = smoothn.smoothn(
                 v, s=settings.smoothn_p
                 )
 
