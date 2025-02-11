@@ -14,7 +14,7 @@ from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
 
 from openpiv.tools import Multiprocesser, display_vector_field, transform_coordinates
-from openpiv import validation, filters, tools, scaling, preprocess
+from openpiv import validation, filters, tools, smoothn
 from openpiv.pyprocess_gpu import extended_search_area_piv, get_rect_coordinates, \
     get_field_shape
 
@@ -148,6 +148,16 @@ def multipass(args, settings):
     )
     mempool.free_all_blocks()
 
+    if settings.smoothn:
+        u, dummy_u1, dummy_u2, dummy_u3 = smoothn.smoothn(
+            u.get(), s=settings.smoothn_p
+        )
+        v, dummy_v1, dummy_v2, dummy_v3 = smoothn.smoothn(
+            v.get(), s=settings.smoothn_p
+            )
+        u = cp.array(u)
+        v = cp.array(v)
+
     grid_mask = np.zeros_like(u, dtype=bool)
 
     # mask the velocity
@@ -196,6 +206,16 @@ def multipass(args, settings):
             settings,
         )
         mempool.free_all_blocks()
+
+        if settings.smoothn and i +1 != settings.num_iterations:
+            u, dummy_u1, dummy_u2, dummy_u3 = smoothn.smoothn(
+                u.get(), s=settings.smoothn_p
+            )
+            v, dummy_v1, dummy_v2, dummy_v3 = smoothn.smoothn(
+                v.get(), s=settings.smoothn_p
+                )
+            u = cp.array(u)
+            v = cp.array(v)
 
 
     time_diff = datetime.now() - now

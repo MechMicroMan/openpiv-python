@@ -97,7 +97,6 @@ class PIVSettings:
     sig2noise_validate: bool = False # when it's False we can save time by not
     #estimating sig2noise ratio at all, so we can set both sig2noise_method to None 
 
-
     "vector validation options"
 
     # choose if you want to do validation of the first pass: True or False
@@ -132,9 +131,9 @@ class PIVSettings:
     # validation
     # Choose: True or False
     replace_vectors: bool = True  # Enable the replacement.
-    smoothn: bool = False  # Enables smoothing of the displacement field
+    smoothn: bool = True   # Enables smoothing of the displacement field
     smoothn_p: float = 0.5  # This is a smoothing parameter
-    # select a method to replace the outliers:
+    # select a method to replace the outliers: 
     # 'localmean', 'disk', 'distance'
     filter_method: str = "localmean"
     # maximum iterations performed to replace the outliers
