@@ -271,7 +271,7 @@ def multipass(args, settings):
             # mask_coords=mask_coords
         )
 
-        if settings.smoothn and i +1 != settings.num_iterations:
+        if settings.smoothn and i+1 != settings.num_iterations:
             u, dummy_u1, dummy_u2, dummy_u3 = smoothn.smoothn(
                 u, s=settings.smoothn_p
             )

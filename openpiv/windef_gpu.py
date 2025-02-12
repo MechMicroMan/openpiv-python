@@ -156,7 +156,7 @@ def multipass(args, settings):
             v, s=settings.smoothn_p
             )
 
-    grid_mask = np.zeros_like(u, dtype=bool)
+    #grid_mask = np.zeros_like(u, dtype=bool)
 
     # mask the velocity
     # u = np.ma.masked_array(u, mask=grid_mask)
