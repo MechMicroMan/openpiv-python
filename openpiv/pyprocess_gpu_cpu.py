@@ -9,6 +9,8 @@ from numpy import ma
 from numpy.fft import rfft2 as rfft2_, irfft2 as irfft2_, fftshift as fftshift_
 from scipy.signal import convolve2d as conv_
 
+from datetime import datetime
+
 import cupy as cp
 
 __licence_ = """
@@ -185,6 +187,7 @@ def sliding_window_array(
     image: np.ndarray, 
     window_size: Tuple[int,int]=(64,64),
     overlap: Tuple[int,int]=(32,32),
+    block_range = None
     )-> np.ndarray:
     '''
     This version does not use numpy as_strided and is much more memory efficient.
@@ -200,13 +203,19 @@ def sliding_window_array(
     #     overlap = (overlap, overlap)
 
     x, y = get_rect_coordinates(image.shape, window_size, overlap, center_on_field = False)
-    x = (x - window_size[1]//2).astype(int)
-    y = (y - window_size[0]//2).astype(int)
-    x, y = np.reshape(x, (-1,1,1)), np.reshape(y, (-1,1,1))
+    x = (x - window_size[1]//2).astype(int).flatten()
+    y = (y - window_size[0]//2).astype(int).flatten()
 
     win_x, win_y = np.meshgrid(np.arange(0, window_size[1]), np.arange(0, window_size[0]))
-    win_x = win_x[np.newaxis,:,:] + x
-    win_y = win_y[np.newaxis,:,:] + y
+    if block_range is None:
+        win_x = win_x[None,:,:] + x[:, None, None]
+        win_y = win_y[None,:,:] + y[:, None, None]
+
+    else:
+        win_x = win_x[None,:,:] + x[block_range[0]:block_range[1], None, None] 
+        win_y = win_y[None,:,:] + y[block_range[0]:block_range[1], None, None]
+
+
     windows = image[win_y, win_x]
     
     return windows
@@ -924,7 +933,8 @@ def extended_search_area_piv(
     width: int=2,
     normalized_correlation: bool=False,
     use_vectorized: bool=False,
-):
+    max_array_size: int = None,
+    ):
     """Standard PIV cross-correlation algorithm, with an option for
     extended area search that increased dynamic range. The search region
     in the second frame is larger than the interrogation window size in the
@@ -1049,10 +1059,7 @@ def extended_search_area_piv(
 
     # get field shape
     n_rows, n_cols = get_field_shape(frame_a.shape, search_area_size, overlap)
-
-    # We implement the new vectorized code
-    aa = sliding_window_array(frame_a, search_area_size, overlap)
-    bb = sliding_window_array(frame_b, search_area_size, overlap)
+    num_areas = n_rows * n_cols
 
     # for the case of extended seearch, the window size is smaller than
     # the search_area_size. In order to keep it all vectorized the
@@ -1077,19 +1084,71 @@ def extended_search_area_piv(
         mask = np.broadcast_to(mask, aa.shape)
         aa *= mask
 
-    corr = fft_correlate_images(aa, bb,
+
+    #full_arr_size = np.uint64(num_areas * window_size[0] * window_size[1])
+    #print(f'full_arr_size: {full_arr_size}')
+    #print(f'max_array_size: {max_array_size}')
+
+    if max_array_size is not None and num_areas > (max_array_size/ (window_size[0] * window_size[1])):
+
+        total_bad = 0
+        u, v = np.zeros(n_rows * n_cols), np.zeros(n_rows * n_cols)
+        area_size = search_area_size[0] * search_area_size[1]
+        #print(f'area_size: {area_size}')
+        areas_per_block = int(max_array_size // area_size)
+        #print(f'areas_per_block: {areas_per_block}')
+        num_blocks = int(np.ceil(num_areas / areas_per_block))
+        #print(f'num_blocks: {num_blocks}')
+
+        now = datetime.now()
+        print(f'\t{now.strftime("%H:%M:%S")}: {num_blocks} blocks starting')
+        for i in range(num_blocks):
+
+            block_start, block_end = i*areas_per_block, (i+1)*areas_per_block
+
+            aa = sliding_window_array(frame_a, search_area_size, overlap, 
+                                  block_range=(block_start, block_end))
+            bb = sliding_window_array(frame_b, search_area_size, overlap, 
+                                  block_range=(block_start, block_end))
+
+            corr = fft_correlate_images(
+                aa, bb,
+                correlation_method=correlation_method,
+                normalized_correlation=normalized_correlation
+            )
+
+            aa, bb = None, None
+            mempool.free_all_blocks()
+
+            u[block_start:block_end], v[block_start:block_end], invalid = vectorized_correlation_to_displacements(
+                corr, subpixel_method=subpixel_method
+            )
+
+            total_bad += invalid
+           
+            now = datetime.now()
+            print(f'\t{now.strftime("%H:%M:%S")}: Block {i+1} / {num_blocks} : {total_bad} bad peaks so far', end='\r')
+
+        print(f'\t{now.strftime("%H:%M:%S")}: All {num_blocks} blocks complete : {total_bad} bad peaks')
+        u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
+
+    else:
+        aa = sliding_window_array(frame_a, search_area_size, overlap)
+        bb = sliding_window_array(frame_b, search_area_size, overlap)
+        corr = fft_correlate_images(aa, bb,
                                 correlation_method=correlation_method,
                                 normalized_correlation=normalized_correlation)
-    aa, bb = None, None
-    mempool.free_all_blocks()
+        aa, bb = None, None
+        mempool.free_all_blocks()
 
-    if use_vectorized is True:
-        u, v = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
-                                           subpixel_method=subpixel_method)
-    else:
-        raise NotImplementedError('correlation_to_displacement')
-        u, v = correlation_to_displacement(corr, n_rows, n_cols,
-                                           subpixel_method=subpixel_method)
+        if use_vectorized is True:
+            u, v, invalid = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
+                                            subpixel_method=subpixel_method)
+            print('\t{0} bad peaks'.format(invalid))
+        else:
+            raise NotImplementedError('correlation_to_displacement')
+            u, v = correlation_to_displacement(corr, n_rows, n_cols,
+                                            subpixel_method=subpixel_method)
 
     # return output depending if user wanted sig2noise information
     if sig2noise_method is not None:
@@ -1195,7 +1254,7 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     peaks1_i[invalid] = corr.shape[1] // 2 # temp. so no errors would be produced
     peaks1_j[invalid] = corr.shape[2] // 2
     
-    print(f"Found {len(invalid)} bad peak(s)")
+    #print(f"Found {len(invalid)} bad peak(s)")
     if len(invalid) == corr.shape[0]: # in case something goes horribly wrong 
         return np.zeros((np.size(corr, 0), 2))*np.nan
     
@@ -1265,9 +1324,9 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     #disp[ind, :] = np.vstack((disp_vx, disp_vy)).T
     #return disp[:,0].reshape((n_rows, n_cols)), disp[:,1].reshape((n_rows, n_cols))
     if n_rows == None or n_cols == None:
-        return disp_vx, disp_vy
+        return disp_vx, disp_vy, len(invalid)
     else:
-        return disp_vx.reshape((n_rows, n_cols)), disp_vy.reshape((n_rows, n_cols))
+        return disp_vx.reshape((n_rows, n_cols)), disp_vy.reshape((n_rows, n_cols)), len(invalid)
     
     
 def nextpower2(i):
