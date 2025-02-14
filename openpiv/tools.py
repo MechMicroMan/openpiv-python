@@ -464,7 +464,7 @@ def save(
         )
     # save data to a numpy npz file
     elif extension == 'npz':
-        binning = settings.overlap[-1]
+        binning = settings.windowsizes[-1] - settings.overlap[-1]
         shape = u.shape
         
         np.savez(
@@ -472,7 +472,9 @@ def save(
             x = x, y = y, u = u, v = v,
             format = 'OpenPIV', version = 'n/a',
             binning = binning, shape = shape, 
-            flags = flags, mask = mask)
+            flags = flags, mask = mask, 
+            #settings=settings.asdict()
+            )
     else:
         raise ValueError('File extension not supported. Use txt or npz')
 

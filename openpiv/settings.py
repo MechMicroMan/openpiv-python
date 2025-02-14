@@ -1,5 +1,5 @@
 import pathlib
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from importlib_resources import files
 from typing import Optional, Tuple, Union
 import numpy as np
@@ -159,3 +159,6 @@ class PIVSettings:
 
     num_cpus: int = 1
     max_array_size: int = None
+
+    def asdict(self):
+        return asdict(self)
