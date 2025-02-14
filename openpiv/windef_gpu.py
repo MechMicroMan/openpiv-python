@@ -202,6 +202,7 @@ def multipass(args, settings):
             u,
             v,
             settings,
+            pass_num=i
         )
         mempool.free_all_blocks()
 
@@ -449,6 +450,7 @@ def multipass_img_deform(
     u_old: np.ndarray,
     v_old: np.ndarray,
     settings: "PIVSettings",
+    pass_num: int
     # mask_coords: Union[np.ndarray, None]=None,
 ):
     """
@@ -639,6 +641,7 @@ def multipass_img_deform(
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
         max_array_size=settings.max_array_size,
+        pass_num=pass_num
     )
 
     frame_b = None
@@ -670,8 +673,16 @@ def multipass_img_deform(
 
     if np.all(flags):
         raise ValueError("Something happened in the validation")
+    
 
-   
+    fig, (ax, ax1) = plt.subplots(1, 2, figsize=(10,5))
+    plot = ax.imshow(u)
+    fig.colorbar(plot, ax=ax)
+    plot2 = ax1.imshow(v)
+    fig.colorbar(plot2, ax=ax1)
+    fig.savefig('C:/Users/mbcx9rt5/Desktop/Test/uv_' + str(pass_num) + '.png')
+    
+
     ## Turn off remove_outliers for the last step
     if current_iteration +1 != settings.num_iterations:
         now = datetime.now()

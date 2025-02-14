@@ -11,6 +11,8 @@ from scipy.signal import convolve2d as conv_
 
 from datetime import datetime
 
+from matplotlib import pyplot as plt
+
 import cupy as cp
 
 __licence_ = """
@@ -934,6 +936,7 @@ def extended_search_area_piv(
     normalized_correlation: bool=False,
     use_vectorized: bool=False,
     max_array_size: int = None,
+    pass_num=0
     ):
     """Standard PIV cross-correlation algorithm, with an option for
     extended area search that increased dynamic range. The search region
@@ -1121,16 +1124,15 @@ def extended_search_area_piv(
             mempool.free_all_blocks()
 
             u[block_start:block_end], v[block_start:block_end], invalid = vectorized_correlation_to_displacements(
-                corr, subpixel_method=subpixel_method
+                corr, subpixel_method=subpixel_method, pass_num=pass_num
             )
 
             total_bad += invalid
            
-            now = datetime.now()
-            print(f'\t{now.strftime("%H:%M:%S")}: Block {i+1} / {num_blocks} : {total_bad} bad peaks so far', end='\r')
+            print(f'\t{datetime.now().strftime("%H:%M:%S")}: Block {i+1} / {num_blocks} : {total_bad} bad peaks so far', end='\r')
 
         perc = 100*(total_bad/(2*num_areas))
-        print(f'\t{now.strftime("%H:%M:%S")}: All {num_blocks} blocks complete : {total_bad} ({perc:.2f}%) bad peaks')
+        print(f'\t{datetime.now().strftime("%H:%M:%S")}: All {num_blocks} blocks complete : {total_bad} ({perc:.2f}%) bad peaks')
         u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
 
     else:
@@ -1144,7 +1146,7 @@ def extended_search_area_piv(
 
         if use_vectorized is True:
             u, v, invalid = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
-                                            subpixel_method=subpixel_method)
+                                            subpixel_method=subpixel_method, pass_num=pass_num)
             perc = 100*(invalid/(2*num_areas))
             print('\t{0} ({1:.2f}%) bad peaks'.format(invalid, perc))
         else:
@@ -1214,7 +1216,8 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
                                             n_rows: Optional[int]=None,
                                             n_cols: Optional[int]=None,
                                             subpixel_method: str='gaussian',
-                                            eps: float=1e-7
+                                            eps: float=1e-7,
+                                            pass_num=0
 ):
     """
     Correlation maps are converted to displacement for each interrogation
@@ -1243,9 +1246,23 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     
     # corr = corr.get().astype(np.float32) + eps # avoids division by zero
     corr += eps # avoids division by zero
-    peaks = find_all_first_peaks(corr)[0]
+    peaks, peaks_max = find_all_first_peaks(corr)
+
     ind, peaks1_i, peaks1_j = peaks[:,0], peaks[:,1], peaks[:,2]
-    
+
+
+    fig, ax = plt.subplots(1, 2, figsize=(10,5))
+    ax=ax.ravel()
+    plot = ax[0].imshow(peaks_max.get().reshape((n_rows, n_cols)))
+    fig.colorbar(plot, ax=ax[0])
+    ax[0].set_title('Peak1')
+    div = peaks_max.get() / np.abs(np.nanmean(corr.get(), axis = (-2, -1)))
+    plot = ax[1].imshow(div.reshape((n_rows, n_cols)), vmin=0, vmax=3)
+    fig.colorbar(plot, ax=ax[1])
+    ax[1].set_title('Div Mean')
+    fig.savefig('C:/Users/mbcx9rt5/Desktop/Test/peaks_max_' + str(pass_num) + '.png')
+   
+   
     # peak checking
     if subpixel_method in ("gaussian", "centroid", "parabolic"):
         mask_width = 1
@@ -1259,6 +1276,7 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     #print(f"Found {len(invalid)} bad peak(s)")
     if len(invalid) == corr.shape[0]: # in case something goes horribly wrong 
         return np.zeros((np.size(corr, 0), 2))*np.nan
+
     
     #points
     c = corr[ind, peaks1_i, peaks1_j]
