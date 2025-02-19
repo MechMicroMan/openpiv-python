@@ -29,7 +29,7 @@ setup(
         'importlib_resources',
         'cupy-cuda12x',
     ],
-    extras_require={"tests": ["pytest"]},
+    extras_require={"gpu": ["cupy-cuda12x"]},
     classifiers=[
         # PyPI-specific version type. The number specified here is a magic
         # constant
