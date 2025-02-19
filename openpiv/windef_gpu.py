@@ -217,7 +217,7 @@ def multipass(args, settings):
 
     time_diff = datetime.now() - now
     now = datetime.now()
-    print(f' {now.strftime("%H:%M:%S")}: completed pass {i+1} / {settings.num_iterations}')
+    print(f' {now.strftime("%H:%M:%S")}: completed pass {settings.num_iterations}')
 
 
     # we now use only 0s instead of the image
@@ -242,6 +242,8 @@ def multipass(args, settings):
     # x to the right, y upwards
     # and so u,v
     x, y, u, v = transform_coordinates(x, y, u, v)
+
+    grid_mask = np.zeros_like(u, dtype=bool)
 
     # Saving
     txt_file = settings.save_path   
