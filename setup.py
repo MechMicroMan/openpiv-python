@@ -27,7 +27,6 @@ setup(
         'natsort',
         'tqdm',
         'importlib_resources',
-        'cupy-cuda12x',
     ],
     extras_require={"gpu": ["cupy-cuda12x"]},
     classifiers=[
