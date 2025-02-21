@@ -104,21 +104,25 @@ def piv(settings):
     
     settings.save_path = save_path
 
-    task = Multiprocesser(
-        data_dir=settings.filepath_images,
-        pattern_a=settings.frame_pattern_a,
-        pattern_b=settings.frame_pattern_b,
-    )
-    task.run(func=multipass, n_cpus=settings.num_cpus, settings=settings)
+    #task = Multiprocesser(
+    #    data_dir=settings.filepath_images,
+    #    pattern_a=settings.frame_pattern_a,
+    #    pattern_b=settings.frame_pattern_b,
+    #)
+    #task.run(func=multipass, n_cpus=settings.num_cpus, settings=settings)
+
+    multipass(settings=settings)
 
 
-def multipass(args, settings):
+def multipass(settings):
     """A function to process each image pair."""
 
     # this line is REQUIRED for multiprocessing to work
     # always use it in your custom function
 
-    file_a, file_b, counter = args
+    #file_a, file_b, counter = args
+    file_a = settings.frame_pattern_a
+    file_b = settings.frame_pattern_b
 
     # print(f'Inside func {file_a}, {file_b}, {counter}')
 
