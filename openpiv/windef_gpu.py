@@ -121,8 +121,8 @@ def multipass(settings):
     # always use it in your custom function
 
     #file_a, file_b, counter = args
-    file_a = settings.frame_pattern_a
-    file_b = settings.frame_pattern_b
+    file_a = settings.filepath_images / settings.frame_pattern_a
+    file_b = settings.filepath_images / settings.frame_pattern_b
 
     # print(f'Inside func {file_a}, {file_b}, {counter}')
 
