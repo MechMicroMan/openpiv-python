@@ -254,9 +254,8 @@ def multipass(settings):
     print(f'Saving to {txt_file}')
     tools.save(txt_file, x, y, u, v, flags, grid_mask, settings)
 
-    print(f"Image Pair {counter + 1}")
+    #print(f"Image Pair {counter + 1}")
     print(file_a.stem, file_b.stem)
-
 
 def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order = 1, interpolation_order2 = 3):
     """
@@ -299,58 +298,62 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
         previous pass
     """
 
-    mempool = cp.get_default_memory_pool()
+    tile_size = 8192
 
-    y1 = y[:, 0]  # extract first column from meshgrid
-    x1 = x[0, :]  # extract first row from meshgrid
-    side_x = cp.arange(frame.shape[1])  # extract the image grid
-    side_y = cp.arange(frame.shape[0])
+    pool = cp.get_default_memory_pool()
 
-    x, y = cp.meshgrid(side_x, side_y)
+    # Cast image to float32
+    frame = frame.astype(cp.float32)
+    H, W = frame.shape
 
-    #print(mempool.used_bytes()/1024/1024)   #5914
+    # Origin of the coarse grid
+    x0 = x[0,0]
+    y0 = y[0,0]
 
-    #print(f' {datetime.now().strftime("%H:%M:%S")}')
-    ut = scn.map_coordinates(
-        cp.array(u), 
-        cp.asarray(cp.meshgrid(
-            (side_x - x1[0]) / (window_size - overlap), 
-            (side_y - y1[0]) / (window_size - overlap)
-        )[::-1]), 
-        order=interpolation_order2,
-        mode='constant', cval=0
-    )
+    # Prepare output array
+    frame_def = cp.empty((H, W), dtype=cp.uint8)
 
-    #print(mempool.used_bytes()/1024/1024)   #9857
-    #print(f' {datetime.now().strftime("%H:%M:%S")}')
-    vt = scn.map_coordinates(
-        cp.array(v), 
-        cp.asarray(cp.meshgrid(
-            (side_x - x1[0]) / (window_size - overlap), 
-            (side_y - y1[0]) / (window_size - overlap)
-        )[::-1]), 
-        order=interpolation_order2,
-        mode='constant', cval=0
-    )
+    # Loop over tiles
+    for y_start in range(0, H, tile_size):
+        y_end = min(y_start + tile_size, H)
+        for x_start in range(0, W, tile_size):
+            x_end = min(x_start + tile_size, W)
 
-    del x1, y1, side_x, side_y
-    mempool.free_all_blocks()
+            #print(f"Tile ({y_start}:{y_end}, {x_start}:{x_end})")
+            #print("Mem (MB):", pool.used_bytes() / 1024 / 1024)
 
-    #print(f' {datetime.now().strftime("%H:%M:%S")}')
-    #print(mempool.used_bytes()/1024/1024)  #13700
+            # Create coordinate grid for this tile
+            ys = cp.arange(y_start, y_end)
+            xs = cp.arange(x_start, x_end)
+            grid_x, grid_y = cp.meshgrid(xs, ys)  # shape (tile_h, tile_w)
 
-    frame = frame.astype(np.float32)
+            # Interpolate u, v over this tile's coordinates
+            coord_u_y = (grid_y - y0) / (window_size - overlap)
+            coord_u_x = (grid_x - x0) / (window_size - overlap)
+            coords = cp.stack([coord_u_y, coord_u_x])  # shape (2, tile_h, tile_w)
+            ut_tile = scn.map_coordinates(cp.array(u), coords,
+                                          order=interpolation_order2,
+                                          mode='constant', cval=0)
+            vt_tile = scn.map_coordinates(cp.array(v), coords,
+                                          order=interpolation_order2,
+                                          mode='constant', cval=0)
 
-    frame_def = scn.map_coordinates(
-        frame, cp.array((y - vt, x + ut)), order=interpolation_order, mode='nearest',
-    )
+            # Compute source positions for the warped image
+            src_y = grid_y - vt_tile
+            src_x = grid_x + ut_tile
+            coords_frame = cp.stack([src_y, src_x])
 
-    #print(mempool.used_bytes()/1024/1024)   #17742
+            # Warp the original frame for this tile
+            frame_def_tile = scn.map_coordinates(frame, coords_frame,
+                                                 order=interpolation_order,
+                                                 mode='nearest')
 
-    ut = None
-    vt = None
-    mempool.free_all_blocks()
+            # Write tile into output
+            frame_def[y_start:y_end, x_start:x_end] = frame_def_tile
 
+            # Free tile's temporary memory
+            del coords, ut_tile, vt_tile, coords_frame, frame_def_tile
+            pool.free_all_blocks()
 
     return frame_def
 
