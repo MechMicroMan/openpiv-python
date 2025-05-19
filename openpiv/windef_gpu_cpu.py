@@ -13,7 +13,7 @@ from skimage.util import invert
 from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
 
-from openpiv.tools import Multiprocesser, display_vector_field, transform_coordinates
+from openpiv.tools import Multiprocesser
 from openpiv import validation, filters, tools, scaling, preprocess
 from openpiv.pyprocess_gpu import extended_search_area_piv, get_rect_coordinates, \
     get_field_shape
@@ -220,16 +220,10 @@ def multipass(args, settings):
     # x, y, u, v = scaling.uniform(x, y, u, v,
     #                                 scaling_factor=settings.scaling_factor)
 
-    # before saving we conver to the "physically relevant"
-    # right-hand coordinate system with 0,0 at the bottom left
-    # x to the right, y upwards
-    # and so u,v
-    x, y, u, v = transform_coordinates(x, y, u, v)
-
     # Saving
     txt_file = settings.save_path   
     print(f'Saving to {txt_file}')
-    tools.save(txt_file, x, y, u, v, flags, grid_mask, fmt=settings.fmt)
+    tools.save(txt_file, x, y, -u[::-1], -v[::-1], flags, grid_mask, settings)
 
     print(f"Image Pair {counter + 1}")
     print(file_a.stem, file_b.stem)
