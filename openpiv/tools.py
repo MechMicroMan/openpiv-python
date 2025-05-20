@@ -30,8 +30,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as pt
 from natsort import natsorted
 
-from datetime import datetime
-
 # from builtins import range
 from imageio.v3 import imread as _imread, imwrite as _imsave
 from skimage.feature import canny
@@ -728,21 +726,3 @@ def display_windows_sampling(x, y, window_size, skip=0, method="standard"):
             raise ValueError("method not valid: choose between standard and random")
     plt.draw()
     plt.show()
-
-
-def transform_coordinates(x, y, u, v):
-    """ Converts coordinate systems from/to the image based / physical based 
-    
-    Input/Output: x,y,u,v
-
-        image based is 0,0 top left, x = columns to the right, y = rows downwards
-        and so u,v 
-
-        physical or right hand one is that leads to the positive vorticity with 
-        the 0,0 origin at bottom left to be counterclockwise
-    
-    """
-    y = y[::-1, :]
-    v *= -1
-    return x, y, u, v
-        

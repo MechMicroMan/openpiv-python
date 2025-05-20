@@ -910,7 +910,6 @@ def extended_search_area_piv(
     sig2noise_method: Union[str, None]='peak2mean',
     width: int=2,
     normalized_correlation: bool=False,
-    use_vectorized: bool=False,
     max_array_size: int = None,
 ):
     """Standard PIV cross-correlation algorithm, with an option for
@@ -1092,16 +1091,10 @@ def extended_search_area_piv(
                                     correlation_method=correlation_method,
                                     normalized_correlation=normalized_correlation)
         
-        if use_vectorized:
-            u, v, invalid = vectorized_correlation_to_displacements(
-                corr, n_rows, n_cols, subpixel_method=subpixel_method
-            )
-            print('{0} bad peaks'.format(invalid))
-        else:
-            u, v = correlation_to_displacement(
-                corr, n_rows, n_cols, subpixel_method=subpixel_method
-            )
-
+        u, v, invalid = vectorized_correlation_to_displacements(
+            corr, n_rows, n_cols, subpixel_method=subpixel_method
+        )
+        print('{0} bad peaks'.format(invalid))
         
         
 
@@ -1122,43 +1115,6 @@ def extended_search_area_piv(
     sig2noise = sig2noise.reshape(n_rows, n_cols)
 
     return u/dt, v/dt, sig2noise
-
-
-def correlation_to_displacement(corr, n_rows, n_cols,
-                                subpixel_method="gaussian"):
-    """
-    Correlation maps are converted to displacement for each interrogation
-    window using the convention that the size of the correlation map
-    is 2N -1 where N is the size of the largest interrogation window
-    (in frame B) that is called search_area_size
-    Inputs:
-        corr : 3D nd.array
-            contains output of the fft_correlate_images
-        n_rows, n_cols : number of interrogation windows, output of the
-            get_field_shape
-    """
-    # iterate through interrogation widows and search areas
-    u = np.zeros((n_rows, n_cols))
-    v = np.zeros((n_rows, n_cols))
-
-    # center point of the correlation map
-    default_peak_position = np.floor(np.array(corr[0, :, :].shape)/2)
-    for k in range(n_rows):
-        for m in range(n_cols):
-            # look at studying_correlations.ipynb
-            # the find_subpixel_peak_position returns
-            peak = np.array(find_subpixel_peak_position(corr[k*n_cols+m, :, :],
-                            subpixel_method=subpixel_method)) -\
-                            default_peak_position  # type: ignore
-
-        # the horizontal shift from left to right is the u
-        # the vertical displacement from top to bottom (increasing row) is v
-        # x the vertical shift from top to bottom is row-wise shift is now
-        # a negative vertical
-            u[k, m], v[k, m] = peak[1], peak[0]
-
-    return (u, v)
-
 
 def vectorized_correlation_to_displacements(corr: np.ndarray, 
                                             n_rows: Optional[int]=None,

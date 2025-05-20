@@ -6,9 +6,8 @@ Created on Fri Oct  4 14:04:04 2019
 """
 
 import pathlib
-from typing import Optional, Tuple, Union
+from typing import Tuple
 import numpy as np
-from skimage.util import invert
 
 from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
@@ -232,14 +231,6 @@ def multipass(settings):
     # u = cp.ma.masked_array(u, np.ma.nomask)
     # v = cp.ma.masked_array(v, np.ma.nomask)
 
-    # pixel / frame -> pixel / second
-    u /= settings.dt 
-    v /= settings.dt
-    
-    # "scales the results pixel-> meter"
-    # x, y, u, v = scaling.uniform(x, y, u, v,
-    #                                 scaling_factor=settings.scaling_factor)
-
     grid_mask = np.zeros_like(u, dtype=bool)
 
     # Saving
@@ -424,7 +415,6 @@ def first_pass(frame_a, frame_b, settings):
         sig2noise_method=settings.sig2noise_method,
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
-        use_vectorized = settings.use_vectorized,
         max_array_size=settings.max_array_size,
     )
 
@@ -587,29 +577,18 @@ def multipass_img_deform(
                               ky=settings.interpolation_order)
     v_pre = ip2(y_int, x_int)
 
-    # @TKauefer added another method to the windowdeformation, 'symmetric'
-    # splits the onto both frames, takes more effort due to additional
-    # interpolation however should deliver better results
-
-    # Image deformation has to occur in image coordinates
-    # therefore we need to convert the results of the
-    # previous pass which are stored in the physical units
-    # and so y from the get_coordinates
-
     now = datetime.now()
     print(f'\t{now.strftime("%H:%M:%S")}: deform_windows')
-    
-    if settings.deformation_method == "second image":
-        frame_b = deform_windows(
-            frame_b, x, y, u_pre, -v_pre, window_size, overlap, 
-            interpolation_order=settings.interpolation_order,
-            interpolation_order2=settings.interpolation_order)
-        #if current_iteration == 6:
-            #plt.figure()
-            #plt.imshow(frame_b.get())
-            #plt.show()
-    else:
-        raise Exception("Deformation method is not valid.")
+
+    frame_b = deform_windows(
+        frame_b, x, y, u_pre, -v_pre, window_size, overlap, 
+        interpolation_order=settings.interpolation_order,
+        interpolation_order2=settings.interpolation_order)
+    #if current_iteration == 6:
+        #plt.figure()
+        #plt.imshow(frame_b.get())
+        #plt.show()
+
     now = datetime.now()
     print(f'\t{now.strftime("%H:%M:%S")}: deform_windows complete')
 
@@ -639,7 +618,6 @@ def multipass_img_deform(
         sig2noise_method=settings.sig2noise_method,
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
-        use_vectorized = settings.use_vectorized,
         max_array_size=settings.max_array_size,
     )
 

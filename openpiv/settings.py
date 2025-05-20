@@ -63,15 +63,8 @@ class PIVSettings:
     # methode used for subpixel interpolation:
     # 'gaussian','centroid','parabolic'
     subpixel_method: str = "gaussian"
-    # use vectorized sig2noise and subpixel approximation functions
-    use_vectorized: bool = True
-    # 'symmetric' or 'second image', 'symmetric' splits the deformation
-    # both images, while 'second image' does only deform the second image.
-    deformation_method: str = 'second image'  # 'symmetric' or 'second image'
     # order of the image interpolation for the window deformation
     interpolation_order: int = 3
-    scaling_factor: float = 1.0  # scaling factor pixel/meter
-    dt: float = 1.0  # time between to frames (in seconds)
 
     # Signal to noise ratio:
     # we can decide to estimate it or not at every vector position

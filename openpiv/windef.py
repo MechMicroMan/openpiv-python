@@ -6,7 +6,7 @@ Created on Fri Oct  4 14:04:04 2019
 """
 
 import pathlib
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 import numpy as np
 import scipy.ndimage as scn
 from skimage.util import invert
@@ -15,7 +15,7 @@ from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
 
 from openpiv.tools import Multiprocesser
-from openpiv import validation, filters, tools, scaling, preprocess
+from openpiv import validation, filters, tools, preprocess
 from openpiv.pyprocess import extended_search_area_piv, get_rect_coordinates, \
     get_field_shape
 from openpiv import smoothn
@@ -300,14 +300,6 @@ def multipass(args, settings):
         u = np.ma.masked_array(u, np.ma.nomask)
         v = np.ma.masked_array(v, np.ma.nomask)
 
-    # pixel / frame -> pixel / second
-    u /= settings.dt 
-    v /= settings.dt
-    
-    # "scales the results pixel-> meter"
-    # x, y, u, v = scaling.uniform(x, y, u, v,
-    #                                 scaling_factor=settings.scaling_factor)
-
     # Saving
     txt_file = settings.save_path   
     print(f'Saving to {txt_file}')
@@ -514,7 +506,6 @@ def first_pass(frame_a, frame_b, settings):
         sig2noise_method=settings.sig2noise_method,
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
-        use_vectorized = settings.use_vectorized,
         max_array_size=settings.max_array_size,
     )
 
@@ -652,40 +643,14 @@ def multipass_img_deform(
                               ky=settings.interpolation_order)
     v_pre = ip2(y_int, x_int)
 
-    # @TKauefer added another method to the windowdeformation, 'symmetric'
-    # splits the onto both frames, takes more effort due to additional
-    # interpolation however should deliver better results
 
-    old_frame_a = frame_a.copy()
-    old_frame_b = frame_b.copy()
+    frame_b = deform_windows(
+        frame_b, x, y, u_pre, -v_pre,
+        interpolation_order=settings.interpolation_order,
+        interpolation_order2=settings.interpolation_order)
 
-    # Image deformation has to occur in image coordinates
-    # therefore we need to convert the results of the
-    # previous pass which are stored in the physical units
-    # and so y from the get_coordinates
-
-    if settings.deformation_method == "symmetric":
-        # this one is doing the image deformation (see above)
-        x_new, y_new, ut, vt = create_deformation_field(
-            frame_a, x, y, u_pre, v_pre,
-            interpolation_order=settings.interpolation_order)
-        frame_a = scn.map_coordinates(
-            frame_a, ((y_new - vt / 2, x_new - ut / 2)),
-            order=settings.interpolation_order, mode='nearest')
-        frame_b = scn.map_coordinates(
-            frame_b, ((y_new + vt / 2, x_new + ut / 2)),
-            order=settings.interpolation_order, mode='nearest')
-    elif settings.deformation_method == "second image":
-        frame_b = deform_windows(
-            frame_b, x, y, u_pre, -v_pre,
-            interpolation_order=settings.interpolation_order,
-            interpolation_order2=settings.interpolation_order)
-    else:
-        raise Exception("Deformation method is not valid.")
     now = datetime.now()
     print(f'\t{now.strftime("%H:%M:%S")}: deform_windows complete')
-
-
 
     # if do_sig2noise is True
     #     sig2noise_method = sig2noise_method
@@ -708,7 +673,6 @@ def multipass_img_deform(
         sig2noise_method=settings.sig2noise_method,
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
-        use_vectorized = settings.use_vectorized,
         max_array_size=settings.max_array_size,
     )
 

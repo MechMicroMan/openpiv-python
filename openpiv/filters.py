@@ -1,7 +1,6 @@
 """The openpiv.filters module contains some filtering/smoothing routines."""
 from typing import Tuple, Optional
 import numpy as np
-import numpy.typing as npt
 from scipy.signal import convolve
 from openpiv.lib import replace_nans
 
