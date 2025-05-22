@@ -330,7 +330,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
             # Warp the original frame for this tile
             frame_def_tile = scn.map_coordinates(frame, coords_frame,
                                                  order=interpolation_order,
-                                                 mode='nearest')
+                                                 mode='nearest', prefilter=False)
 
             # Write tile into output
             frame_def[y_start:y_end, x_start:x_end] = frame_def_tile
