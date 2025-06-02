@@ -1242,8 +1242,8 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
         nom2 = log(cd) - log(cu)
         den2 = 2 * log(cd) - 4 * log(c) + 2 * log(cu)
 
-        if not (np.all(den1 != 0.0) and np.all(den2 != 0.0)):
-            print('\trawhsdh, division by 0')
+        #if not (np.all(den1 != 0.0) and np.all(den2 != 0.0)):
+        #    print('\trawhsdh, division by 0')
         shift_i = nom1 / den1
         shift_j = nom2 / den2
         # shift_i = np.divide(
